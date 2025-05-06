@@ -1,18 +1,18 @@
 {
-    "name": "Mnist_LeNet",
+    "name": "VAE_GumDestroyer2000",
     "n_gpu": 1,
 
     "arch": {
-        "type": "MnistModel",
+        "type": "Anomaly_VAE",
         "args": {}
     },
     "data_loader": {
-        "type": "MnistDataLoader",
+        "type": "Gum_Dataloader",
         "args":{
-            "data_dir": "data/",
-            "batch_size": 128,
-            "shuffle": true,
-            "validation_split": 0.1,
+            "data_dir": "chewinggum/Data/Images",
+            "batch_size": 10,
+            "shuffle": false, 
+            "validation_split": 0.0,
             "num_workers": 2
         }
     },
@@ -24,7 +24,7 @@
             "amsgrad": true
         }
     },
-    "loss": "nll_loss",
+    "loss": "Anomaly_VAE_loss",
     "metrics": [
         "accuracy", "top_k_acc"
     ],
@@ -42,9 +42,9 @@
         "save_period": 1,
         "verbosity": 2,
         
-        "monitor": "min val_loss",
+        "monitor": "off",
         "early_stop": 10,
 
-        "tensorboard": true
+        "tensorboard": false
     }
 }

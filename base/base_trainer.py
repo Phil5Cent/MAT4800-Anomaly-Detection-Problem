@@ -62,6 +62,8 @@ class BaseTrainer:
         for epoch in range(self.start_epoch, self.epochs + 1):
             result = self._train_epoch(epoch)
 
+
+            result = {'loss': result}
             # save logged informations into log dict
             log = {'epoch': epoch}
             log.update(result)
