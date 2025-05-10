@@ -42,7 +42,7 @@ class Trainer(BaseTrainer):
         for batch_idx, (data, target) in enumerate(self.data_loader):
             data, target = data.to(self.device), target.to(self.device)
 
-            data = torch.nn.functional.adaptive_avg_pool2d(data, output_size=(28, 34)) # Quick and dirty shortcut to shrink the image for quick testing
+            # data = torch.nn.functional.adaptive_avg_pool2d(data, output_size=(28, 34)) # Quick and dirty shortcut to shrink the image for quick testing
             target = data #setting these two equal for super simple logit end comparison via mean squared error
 
             self.optimizer.zero_grad()
