@@ -18,12 +18,42 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
+
+#doesn't belong here... just for testing.
+def get_mean_std(root='chewinggum/Data/Images'):
+    from torchvision import datasets, transforms
+    from torch.utils.data import DataLoader
+
+    transform = transforms.ToTensor()
+    dataset = datasets.ImageFolder(root=root, transform=transform)
+
+
+    loader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=2)
+    mean = 0.
+    std = 0.
+    total_images = 0
+    for images, _ in loader:
+        batch_samples = images.size(0)
+        images = images.view(batch_samples, images.size(1), -1)
+        mean += images.mean(2).sum(0)
+        std += images.std(2).sum(0)
+        total_images += batch_samples
+
+    mean /= total_images
+    std /= total_images
+    return mean, std
+
 def main(config):
     logger = config.get_logger('train')
 
     # setup data_loader instances
     data_loader = config.init_obj('data_loader', module_data)
+
     valid_data_loader = data_loader.split_validation()
+
+    #testing
+    # print(get_mean_std())
+
 
     # build model architecture, then print to console
     model = config.init_obj('arch', module_arch)
