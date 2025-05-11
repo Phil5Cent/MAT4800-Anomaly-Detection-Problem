@@ -6,6 +6,32 @@ import model.loss as module_loss
 import model.metric as module_metric
 import model.model as module_arch
 from parse_config import ConfigParser
+from torchvision import transforms
+import matplotlib.pyplot as plt
+
+
+
+# Inverse normalization
+inv_normalize = transforms.Normalize(
+    mean=[-m/s for m, s in zip((0.2788, 0.2573, 0.2250), (0.3075, 0.2872, 0.2669))],
+    std=[1/s for s in (0.3075, 0.2872, 0.2669)]
+)
+
+def unnormalize(tensor):
+    return inv_normalize(tensor.cpu()).clamp(0, 1)
+
+def show_side_by_side(input_tensor, output_tensor):
+    input_img = transforms.ToPILImage()(unnormalize(input_tensor))
+    output_img = transforms.ToPILImage()(unnormalize(output_tensor))
+
+    fig, axs = plt.subplots(1, 2, figsize=(6, 3))
+    axs[0].imshow(input_img)
+    axs[0].set_title("Input")
+    axs[0].axis("off")
+    axs[1].imshow(output_img)
+    axs[1].set_title("Reconstruction")
+    axs[1].axis("off")
+    plt.show()
 
 
 def main(config):
@@ -56,9 +82,16 @@ def main(config):
     total_metrics = torch.zeros(len(metric_fns))
 
     with torch.no_grad():
-        for i, (data, target) in enumerate(tqdm(data_loader)):
+        for _, (data, target) in enumerate(tqdm(data_loader)):
             data, target = data.to(device), target.to(device)
             output = model(data)
+
+
+            for i in range(data.shape[0]):
+                data_i = data[i,:]
+                target_i = target[i,:]
+                show_side_by_side(data_i, target_i)
+                print(f'image/result {str(i+1)} shown')
 
             #
             # save sample images, or do something with output here
@@ -68,14 +101,14 @@ def main(config):
             loss = loss_fn(output, target)
             batch_size = data.shape[0]
             total_loss += loss.item() * batch_size
-            for i, metric in enumerate(metric_fns):
-                total_metrics[i] += metric(output, target) * batch_size
+            # for i, metric in enumerate(metric_fns):
+            #     total_metrics[i] += metric(output, target) * batch_size
 
     n_samples = len(data_loader.sampler)
     log = {'loss': total_loss / n_samples}
-    log.update({
-        met.__name__: total_metrics[i].item() / n_samples for i, met in enumerate(metric_fns)
-    })
+    # log.update({
+    #     met.__name__: total_metrics[i].item() / n_samples for i, met in enumerate(metric_fns)
+    # })
     logger.info(log)
 
 

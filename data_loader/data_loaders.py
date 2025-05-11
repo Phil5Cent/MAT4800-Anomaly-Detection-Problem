@@ -1,20 +1,11 @@
 from torchvision import datasets, transforms
 from base import BaseDataLoader
 
-
-class MnistDataLoader(BaseDataLoader):
-    """
-    MNIST data loading demo using BaseDataLoader
-    """
-    def __init__(self, data_dir, batch_size, shuffle=True, validation_split=0.0, num_workers=1, training=True):
-        trsfm = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])
-        self.data_dir = data_dir
-        self.dataset = datasets.MNIST(self.data_dir, train=training, download=True, transform=trsfm)
-        super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
-
+class SelfSupervisedImageFolder(datasets.ImageFolder):
+    def __getitem__(self, index):
+        image, _ = super().__getitem__(index)
+        return image, image  # input and target are the same
+    
 
 class Gum_Dataloader(BaseDataLoader):
 
@@ -23,10 +14,10 @@ class Gum_Dataloader(BaseDataLoader):
         trsfm = transforms.Compose([
             transforms.Resize((134, 112)),
             transforms.ToTensor(),
-            transforms.Normalize((0.2788, 0.2573, 0.2250), (0.3075, 0.2872, 0.2669)) #No idea what these arebitrary values are #(tensor([0.2788, 0.2573, 0.2250]), tensor([0.3075, 0.2872, 0.2669]))
+            transforms.Normalize((0.2788, 0.2573, 0.2250), (0.3075, 0.2872, 0.2669)) #Sampled from data
         ])
         self.data_dir = data_dir
         # self.dataset = datasets.MNIST(self.data_dir, train=training, download=True, transform=trsfm)
-        self.dataset = datasets.ImageFolder(root=self.data_dir, transform=trsfm)
+        self.dataset = SelfSupervisedImageFolder(root=self.data_dir, transform=trsfm)
         
         super().__init__(self.dataset, batch_size, shuffle, validation_split, num_workers)
