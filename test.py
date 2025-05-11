@@ -11,10 +11,21 @@ from parse_config import ConfigParser
 def main(config):
     logger = config.get_logger('test')
 
+
+    #Cross compatability windows to linux
+    import pathlib
+    import sys
+
+    # Cross-platform patch to handle incompatible pathlib types in PyTorch checkpoints
+    if hasattr(pathlib, "WindowsPath") and sys.platform != "win32":
+        pathlib.WindowsPath = pathlib.PosixPath
+    elif hasattr(pathlib, "PosixPath") and sys.platform == "win32":
+        pathlib.PosixPath = pathlib.WindowsPath
+
     # setup data_loader instances
     data_loader = getattr(module_data, config['data_loader']['type'])(
         config['data_loader']['args']['data_dir'],
-        batch_size=512,
+        batch_size=7,
         shuffle=False,
         validation_split=0.0,
         training=False,
@@ -30,7 +41,7 @@ def main(config):
     metric_fns = [getattr(module_metric, met) for met in config['metrics']]
 
     logger.info('Loading checkpoint: {} ...'.format(config.resume))
-    checkpoint = torch.load(config.resume)
+    checkpoint = torch.load(config.resume, weights_only=False)
     state_dict = checkpoint['state_dict']
     if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
