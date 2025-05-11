@@ -131,6 +131,14 @@ class BaseTrainer:
 
         :param resume_path: Checkpoint path to be resumed
         """
+
+        import pathlib
+        import sys
+
+        # Patch to avoid WindowsPath incompatibility on Linux
+        if sys.platform != "win32":
+            pathlib.WindowsPath = pathlib.PosixPath
+
         resume_path = str(resume_path)
         self.logger.info("Loading checkpoint: {} ...".format(resume_path))
         checkpoint = torch.load(resume_path, weights_only=False)
