@@ -6,12 +6,28 @@ from base import BaseModel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-
 class Anomaly_VAE(nn.Module):
 
     def __init__(self, input_dim=(3*134*112), hidden_dim=200, latent_dim=50, device=device, latent_space_dim=8):
         super(Anomaly_VAE, self).__init__()
+
+        self.Encoder = Anomaly_VAE_Encoder(input_dim=input_dim, hidden_dim=hidden_dim, latent_dim=latent_dim, device=device, latent_space_dim=latent_space_dim)
+        self.Decoder = Anomaly_VAE_Decoder(device=device, latent_space_dim=latent_space_dim)
+
+    def forward(self, x):
+
+        z = self.Encoder(x)
+        x = self.Decoder(z)
+
+        return x
+
+
+
+
+class Anomaly_VAE_Encoder(nn.Module):
+
+    def __init__(self, input_dim=(3*134*112), hidden_dim=200, latent_dim=50, device=device, latent_space_dim=8):
+        super(Anomaly_VAE_Encoder, self).__init__()
 
         # MLP encoder
         self.MLPencoder = nn.Sequential(
@@ -34,6 +50,31 @@ class Anomaly_VAE(nn.Module):
         self.mean_layer = nn.Linear(latent_dim, latent_space_dim) #transforms output vector logits into vector distribution mean information
         self.log_var_layer = nn.Linear(latent_dim, latent_space_dim) #transforms output vector logits into vector distribution STD information
         
+
+    def encode(self, x):
+        x = self.ConvEncoder(x) #convolves and compresses the image
+        x = x.view(x.size(0), -1) #Flattens for MLP
+        x = self.MLPencoder(x) #processes the image, outputting vector representations
+
+        mean, log_var = self.mean_layer(x), self.log_var_layer(x) #calculates mean/variance (distribution information) for the samples
+        return mean, log_var
+
+    def reparameterization(self, mean, var): #generates a random vector from the sampled distribution
+        epsilon = torch.randn_like(var).to(device)      
+        z = mean + var*epsilon
+        return z
+
+
+    def forward(self, x):
+        mean, log_var = self.encode(x) #gets distribution information
+        z = self.reparameterization(mean, log_var) #generates a random vector from sampled distribution
+        return z #x_hat, mean, log_var
+
+class Anomaly_VAE_Decoder(nn.Module):
+
+    def __init__(self, device=device, latent_space_dim=8):
+        super(Anomaly_VAE_Decoder, self).__init__()
+        
         # Decoder
         self.fc = nn.Sequential(
             nn.Linear(latent_space_dim, 9984), #maps vectors from 9984 from size of convolutional output dimension. READ: maybe consider another layer here. This is pretty simplistic.
@@ -55,28 +96,10 @@ class Anomaly_VAE(nn.Module):
         x = self.fc(x)
         x = x.view(-1, 12, 32, 26) 
         x = self.deconv(x)
-
         
         return x
 
 
-
-    def encode(self, x):
-        x = self.ConvEncoder(x) #convolves and compresses the image
-        x = x.view(x.size(0), -1) #Flattens for MLP
-        x = self.MLPencoder(x) #processes the image, outputting vector representations
-
-        mean, log_var = self.mean_layer(x), self.log_var_layer(x) #calculates mean/variance (distribution information) for the samples
-        return mean, log_var
-
-    def reparameterization(self, mean, var): #generates a random vector from the sampled distribution
-        epsilon = torch.randn_like(var).to(device)      
-        z = mean + var*epsilon
-        return z
-
-
-    def forward(self, x):
-        mean, log_var = self.encode(x) #gets distribution information
-        z = self.reparameterization(mean, log_var) #generates a random vector from sampled distribution
+    def forward(self, z):
         result = self.decode(z) #uses trained model to produce a potential image from the same distribution
         return result #x_hat, mean, log_var

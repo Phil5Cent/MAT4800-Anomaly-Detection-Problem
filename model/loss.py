@@ -1,5 +1,5 @@
 import torch.nn.functional as F
-
+import torch
 
 def nll_loss(output, target):
     return F.nll_loss(output, target)
@@ -29,11 +29,38 @@ def center_crop_match(output, target, crop_ratio=0.1):
 
 
 #our custom loss
-def Anomaly_VAE_loss(output, target, crop_ratio=0.8):
-
-
+def Anomaly_VAE_loss(output, target, label, crop_ratio=0.8):
     output_cropped, target_cropped = center_crop_match(output, target)
 
-    loss = F.mse_loss(output_cropped, target_cropped)
+    # Standard reconstruction loss
+    mse = F.mse_loss(output_cropped, target_cropped, reduction='none')
+    per_sample_loss = mse.view(mse.size(0), -1).mean(dim=1)  # mean over each sample
+
+    # Custom logic:
+    # - Normal samples (label == 0): minimize MSE
+    # - Anomalous samples (label == 1): maximize MSE → equivalent to minimizing -MSE
+
+    # Convert label shape if needed
+    if label.dim() == 0 or label.size(0) != per_sample_loss.size(0):
+        label = label.view(-1)
+
+    # Binary mask
+    normal_mask = (label == 1).float()
+    anomaly_mask = (label == 0).float()
+    
+    normal_reward = per_sample_loss * normal_mask
+    anomaly_penalty = -torch.log(per_sample_loss + 1e-6) * anomaly_mask
+
+    loss = (normal_reward + anomaly_penalty).mean()
 
     return loss
+
+
+# def Anomaly_VAE_loss(output, target, label, crop_ratio=0.8):
+
+
+#     output_cropped, target_cropped = center_crop_match(output, target)
+
+#     loss = F.mse_loss(output_cropped, target_cropped)
+
+#     return loss

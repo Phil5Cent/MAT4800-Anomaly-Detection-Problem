@@ -51,8 +51,8 @@ def main(config):
     # setup data_loader instances
     data_loader = getattr(module_data, config['data_loader']['type'])(
         config['data_loader']['args']['data_dir'],
-        batch_size=7,
-        shuffle=False,
+        batch_size=5,
+        shuffle=True,
         validation_split=0.0,
         training=False,
         num_workers=2
@@ -82,23 +82,25 @@ def main(config):
     total_metrics = torch.zeros(len(metric_fns))
 
     with torch.no_grad():
-        for _, (data, target) in enumerate(tqdm(data_loader)):
-            data, target = data.to(device), target.to(device)
+        for _, (data, label) in enumerate(tqdm(data_loader)):
+            data = data.to(device)
             output = model(data)
 
+            target=data
 
             for i in range(data.shape[0]):
                 data_i = data[i,:]
                 target_i = target[i,:]
+                print(f'image/result {str(i+1)}, label: {label[i]} shown')
                 show_side_by_side(data_i, target_i)
-                print(f'image/result {str(i+1)} shown')
+
 
             #
             # save sample images, or do something with output here
             #
 
             # computing loss, metrics on test set
-            loss = loss_fn(output, target)
+            loss = loss_fn(output, target, label)
             batch_size = data.shape[0]
             total_loss += loss.item() * batch_size
             # for i, metric in enumerate(metric_fns):

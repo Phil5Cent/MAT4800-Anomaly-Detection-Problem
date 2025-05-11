@@ -9,9 +9,9 @@
     "data_loader": {
         "type": "Gum_Dataloader",
         "args":{
-            "data_dir": "chewinggum/Data/Images/Normal",
-            "batch_size": 10,
-            "shuffle": false, 
+            "data_dir": "chewinggum/Data/Images",
+            "batch_size": 30,
+            "shuffle": true, 
             "validation_split": 0.0,
             "num_workers": 2
         }
