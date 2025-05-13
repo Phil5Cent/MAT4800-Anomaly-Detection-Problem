@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch
 import torch.nn as nn
 from diffusers import AutoencoderKL
-from taesd.taesd import Encoder, Decoder
+from taesd_0.taesd import Encoder, Decoder
 
 
 # === VAE Wrapper ===
