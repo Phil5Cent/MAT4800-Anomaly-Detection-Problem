@@ -14,14 +14,14 @@ class Anomaly_VAE(nn.Module):
         super().__init__()
         # self.encoder = vae.encoder
         # self.decoder = vae.decoder
-        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse")#.to(device)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse").to(device)
 
         # Freeze base VAE weights
         for param in self.vae.parameters():
             param.requires_grad = False
 
-        self.tweak = AnomalyPusher()
+        self.tweak = AnomalyPusher().to(device)
         # self.vae.eval()
 
     def forward(self, x, label):

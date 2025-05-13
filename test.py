@@ -8,8 +8,24 @@ import model.model as module_arch
 from parse_config import ConfigParser
 from torchvision import transforms
 import matplotlib.pyplot as plt
+import time
 
+import os
+from torchvision.utils import save_image
 
+# Set output directory
+os.makedirs("output_images", exist_ok=True)
+
+def save_side_by_side(input_tensor, output_tensor, label):
+    input_img = unnormalize(input_tensor)
+    output_img = unnormalize(output_tensor)
+
+    # Combine input and output side-by-side
+    combined = torch.cat((input_img, output_img), dim=2)  # concatenate along width
+
+    filename = f"output_images/_label_{label}.png"
+    save_image(combined, filename)
+    print(f"Saved: {filename}")
 
 # Inverse normalization
 inv_normalize = transforms.Normalize(
@@ -99,6 +115,7 @@ def main(config):
                 target_i = target[i,:]
                 print(f'image/result {str(i+1)}, label: {label[i]} shown')
                 show_side_by_side(target_i, result_i)
+                save_side_by_side(target_i, result_i, label=str(time.time())[-6:-1])
                 
 
 
