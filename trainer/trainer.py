@@ -3,7 +3,11 @@ import torch
 from torchvision.utils import make_grid
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
+from diffusers import AutoencoderKL
+from torchvision import transforms
 
+# vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse").to(device)
+# vae.eval()
 
 class Trainer(BaseTrainer):
     """
@@ -41,12 +45,20 @@ class Trainer(BaseTrainer):
         self.train_metrics.reset()
         for batch_idx, (data, label) in enumerate(self.data_loader):
             data = data.to(self.device)
+            
 
-            # data = torch.nn.functional.adaptive_avg_pool2d(data, output_size=(28, 34)) # Quick and dirty shortcut to shrink the image for quick testing
-            target = data #setting these two equal for super simple logit end comparison via mean squared error
+
+            normal_data = data[label]
+            target = normal_data
+
 
             self.optimizer.zero_grad()
-            output = self.model(data, label)
+            
+
+
+            output = self.model(normal_data)
+            
+            
             loss = self.criterion(output, target, label)
             loss.backward()
             self.optimizer.step()

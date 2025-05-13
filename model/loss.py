@@ -1,5 +1,29 @@
 import torch.nn.functional as F
 import torch
+from pytorch_msssim import ssim
+
+
+def debug_vae_outputs(model, input_batch):
+    model.eval()
+    with torch.no_grad():
+        recon, mean, log_var = model(input_batch)
+
+        print("=== Forward Pass Diagnostics ===")
+        print("Input range:      ", input_batch.min().item(), input_batch.max().item())
+        print("Recon range:      ", recon.min().item(), recon.max().item())
+        print("Recon NaNs:       ", torch.isnan(recon).any().item())
+        print("Mean NaNs:        ", torch.isnan(mean).any().item())
+        print("Log_var NaNs:     ", torch.isnan(log_var).any().item())
+
+        std = torch.exp(0.5 * log_var)
+        eps = torch.randn_like(std)
+        z = mean + eps * std
+
+        print("z mean/std:       ", z.mean().item(), z.std().item())
+        print("z NaNs:           ", torch.isnan(z).any().item())
+
+        l1 = F.l1_loss(recon, input_batch)
+        print("L1 Loss:          ", l1.item())
 
 
 def crop(t, h, w):
@@ -28,21 +52,32 @@ def center_crop_match(output, target, crop_ratio=0.1):
 #simultaneously generating nice distribution for non-anomalous vectors and pushing anomalous vectors away in the distribution
 def full_loss(output, target, label, crop_ratio=0.1):
      
-    z, mean, log_var = output 
+    debug_vae_outputs(output)
+
+    recon, mean, log_var = output  #recon = z
+    
+    target = target[label]
+    
+    recon, target = center_crop_match(recon, target, crop_ratio)
+    # recon = recon[label]
     # dist_match_loss, mean, log_var, z = output
 
-    r_loss = recreation_loss(z, target, label, crop_ratio)
+    loss = 0.5 * F.l1_loss(recon, target)# + 0.5 * (1 - ssim(recon, target, data_range=1.0, size_average=True))
 
-    if torch.sum(~label) > 0:
-        a_loss = 0#dist_match_loss
-        # a_loss = anomaly_embedding_loss(x_normal, x_anomaly)
-    else: 
-        a_loss = 0
 
-    loss = 5*r_loss + a_loss
 
-    if torch.isnan(loss):
-         print('oops')
+    # r_loss = recreation_loss(z, target, label, crop_ratio)
+
+    # if torch.sum(~label) > 0:
+    #     a_loss = 0#dist_match_loss
+    #     # a_loss = anomaly_embedding_loss(x_normal, x_anomaly)
+    # else: 
+    #     a_loss = 0
+
+    # loss = 5*r_loss + a_loss
+
+    # if torch.isnan(loss):
+    #      print('oops')
 
     return loss
 

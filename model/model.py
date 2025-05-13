@@ -2,71 +2,147 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import torch
+import torch.nn as nn
+from diffusers import AutoencoderKL
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# === Basic Encoder ===
-class Anomaly_VAE_Encoder(nn.Module):
-    def __init__(self, latent_dim=100):
-        super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, 4, 2, 1),  # 112x134 -> 56x67
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(32, 64, 4, 2, 1),  # 56x67 -> 28x34
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 128, 4, 2, 1),  # 28x34 -> 14x16
-            nn.LeakyReLU(0.2),
-            nn.Flatten(),
-            nn.Linear(128 * 16 * 14, latent_dim * 2)  # output: [mean | log_var]
-        )
-
-    def forward(self, x):
-        out = self.encoder(x)
-        mean, log_var = out.chunk(2, dim=1)
-        return mean, log_var
-
-
-# === Basic Decoder ===
-class Anomaly_VAE_Decoder(nn.Module):
-    def __init__(self, latent_dim=100):
-        super().__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(latent_dim, 128 * 14 * 16),
-            nn.LeakyReLU(0.2)
-        )
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),  # 14x16 -> 28x34
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(64, 32, 4, 2, 1),  # 28x34 -> 56x68
-            nn.LeakyReLU(0.2),
-            nn.ConvTranspose2d(32, 3, 4, 2, 1),   # 56x68 -> 112x136
-            nn.Sigmoid()
-        )
-
-    def forward(self, z):
-        x = self.fc(z)
-        x = x.view(-1, 128, 14, 16)
-        return self.decoder(x)[..., :134]  # Crop width from 136 to 134
-
+# Load pretrained VAE once
+vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse")
+vae.eval()
 
 # === VAE Wrapper ===
 class Anomaly_VAE(nn.Module):
-    def __init__(self, latent_dim=100):
+    def __init__(self):
         super().__init__()
-        self.encoder = Anomaly_VAE_Encoder(latent_dim)
-        self.decoder = Anomaly_VAE_Decoder(latent_dim)
+        self.encoder = vae.encoder
+        self.decoder = vae.decoder
 
-    def reparameterize(self, mean, log_var):
-        std = torch.exp(0.5 * log_var)
-        eps = torch.randn_like(std)
-        return mean + eps * std
+    def forward(self, x):
+        # x should be normalized to [-1, 1] and resized to 512x512
 
-    def forward(self, x, label):
-        x = x[label] #only looking at normal data
-        mean, log_var = self.encoder(x)
-        z = self.reparameterize(mean, log_var)
-        recon = self.decoder(z)
-        return recon, mean, log_var
+        # Encode
+        enc_out = self.encoder(x)
+        latent_dist = enc_out["latent_dist"]
+        latents = latent_dist.sample()
+
+        # Decode
+        recon = self.decoder(latents)["sample"]
+
+        return recon, latent_dist.mean, latent_dist.stddev
+
+
+# # === Basic Encoder ===
+# class Anomaly_VAE_Encoder(nn.Module):
+#     def __init__(self, latent_dim=100):
+#         super().__init__()
+#         self.encoder = nn.Sequential(
+#             nn.Conv2d(3, 32, 4, 2, 1),  # 112x134 -> 56x67
+#             nn.LeakyReLU(0.2),
+#             nn.Conv2d(32, 64, 4, 2, 1),  # 56x67 -> 28x34
+#             nn.LeakyReLU(0.2),
+#             nn.Conv2d(64, 128, 4, 2, 1),  # 28x34 -> 14x16
+#             nn.LeakyReLU(0.2),
+#             nn.Flatten(),
+#             nn.Linear(128 * 16 * 14, latent_dim * 2)  # output: [mean | log_var]
+#         )
+
+#     def forward(self, x):
+#         out = self.encoder(x)
+#         mean, log_var = out.chunk(2, dim=1)
+#         return mean, log_var
+
+
+# # === Basic Decoder ===
+# class Anomaly_VAE_Decoder(nn.Module):
+#     def __init__(self, latent_dim=100):
+#         super().__init__()
+#         self.fc = nn.Sequential(
+#             nn.Linear(latent_dim, 128 * 14 * 16),
+#             nn.LeakyReLU(0.2)
+#         )
+#         self.decoder = nn.Sequential(
+#             nn.ConvTranspose2d(128, 64, 4, 2, 1),  # 14x16 -> 28x34
+#             nn.LeakyReLU(0.2),
+#             nn.ConvTranspose2d(64, 32, 4, 2, 1),  # 28x34 -> 56x68
+#             nn.LeakyReLU(0.2),
+#             nn.ConvTranspose2d(32, 3, 4, 2, 1),   # 56x68 -> 112x136
+#             nn.Sigmoid()
+#         )
+
+#     def forward(self, z):
+#         x = self.fc(z)
+#         x = x.view(-1, 128, 14, 16)
+#         return self.decoder(x)[..., :134]  # Crop width from 136 to 134
+
+
+# # === VAE Wrapper ===
+# class Anomaly_VAE(nn.Module):
+#     def __init__(self, latent_dim=100):
+#         super().__init__()
+#         self.encoder = Anomaly_VAE_Encoder(latent_dim)
+#         self.decoder = Anomaly_VAE_Decoder(latent_dim)
+
+#     def reparameterize(self, mean, log_var):
+#         std = torch.exp(0.5 * log_var)
+#         eps = torch.randn_like(std)
+#         return mean + eps * std
+
+#     def forward(self, x, label):
+#         x = x[label] #only looking at normal data
+#         mean, log_var = self.encoder(x)
+#         z = self.reparameterize(mean, log_var)
+#         recon = self.decoder(z)
+#         return recon, mean, log_var
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # import torch

@@ -57,6 +57,8 @@ def main(config):
 
     # build model architecture, then print to console
     model = config.init_obj('arch', module_arch)
+    # model = AutoencoderKL
+
     logger.info(model)
 
     # prepare for (multi-device) GPU training
