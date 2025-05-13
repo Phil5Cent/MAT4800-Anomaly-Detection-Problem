@@ -65,15 +65,16 @@ def full_loss(output, target, label, crop_ratio=0.1):
     # loss = 0.5 * F.l1_loss(recon, target)# + 0.5 * (1 - ssim(recon, target, data_range=1.0, size_average=True))
 
     recon, latent_dist_mean, latent_dist_logvar = output
-    loss=2
 
     recon_normal = recon[label]
 
     recon_anomaly = recon[~label]
 
-    loss_normal = F.mse_loss(recon_normal, target[label])
+    loss_normal = F.mse_loss(recon_normal, target[label]) #minimizing -> minimizing normal distance from original
 
-    loss_anomaly = -torch.log(F.mse_loss())
+    loss_anomaly = -torch.log(F.mse_loss(recon_anomaly, target[~label]) + 1e-6) #minimizing -> maximizing anomaly distance from original
+
+    loss = loss_normal + loss_anomaly
 
     # loss_identity = F.mse_loss(z_out[~label], z[~label])
 

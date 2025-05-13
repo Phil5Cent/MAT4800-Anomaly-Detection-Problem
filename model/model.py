@@ -30,7 +30,8 @@ class Anomaly_VAE(nn.Module):
         enc_out = self.vae.encode(x)
         latent_dist = enc_out["latent_dist"]
         latents = latent_dist.sample()
-        latents[~label] = 0.6*latents[~label] + 0.4*self.tweak(latents[~label]) #fucks up the abnormal vectors
+        # latents[~label] = 0.6*latents[~label] + 0.4*self.tweak(latents[~label]) #fucks up the abnormal vectors
+        latents = self.tweak(latents)
 
         # we essentially want the transformation to produce the identity for the good sample and fuck around for the bad sample. Think of it as an extra encoding step
 
