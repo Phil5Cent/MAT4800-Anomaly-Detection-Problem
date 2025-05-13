@@ -46,7 +46,7 @@ class Trainer(BaseTrainer):
             target = data #setting these two equal for super simple logit end comparison via mean squared error
 
             self.optimizer.zero_grad()
-            output = self.model(data)
+            output = self.model(data, label)
             loss = self.criterion(output, target, label)
             loss.backward()
             self.optimizer.step()

@@ -1,8 +1,6 @@
 import torch.nn.functional as F
 import torch
 
-def nll_loss(output, target):
-    return F.nll_loss(output, target)
 
 def crop(t, h, w):
         start_h = (t.shape[2] - h) // 2
@@ -27,40 +25,52 @@ def center_crop_match(output, target, crop_ratio=0.1):
 
 
 
+#simultaneously generating nice distribution for non-anomalous vectors and pushing anomalous vectors away in the distribution
+def full_loss(output, target, label, crop_ratio=0.1):
+     
+    z, mean, log_var = output 
+    # dist_match_loss, mean, log_var, z = output
 
-#our custom loss
-def Anomaly_VAE_loss(output, target, label, crop_ratio=0.8):
-    output_cropped, target_cropped = center_crop_match(output, target)
+    r_loss = recreation_loss(z, target, label, crop_ratio)
 
-    # Standard reconstruction loss
-    mse = F.mse_loss(output_cropped, target_cropped, reduction='none')
-    per_sample_loss = mse.view(mse.size(0), -1).mean(dim=1)  # mean over each sample
+    if torch.sum(~label) > 0:
+        a_loss = 0#dist_match_loss
+        # a_loss = anomaly_embedding_loss(x_normal, x_anomaly)
+    else: 
+        a_loss = 0
 
-    # Custom logic:
-    # - Normal samples (label == 0): minimize MSE
-    # - Anomalous samples (label == 1): maximize MSE → equivalent to minimizing -MSE
+    loss = 5*r_loss + a_loss
 
-    # Convert label shape if needed
-    if label.dim() == 0 or label.size(0) != per_sample_loss.size(0):
-        label = label.view(-1)
-
-    # Binary mask
-    normal_mask = (label == 1).float()
-    anomaly_mask = (label == 0).float()
-    
-    normal_reward = per_sample_loss * normal_mask
-    anomaly_penalty = -torch.log(per_sample_loss + 1e-6) * anomaly_mask
-
-    loss = (normal_reward + anomaly_penalty).mean()
+    if torch.isnan(loss):
+         print('oops')
 
     return loss
 
 
-# def Anomaly_VAE_loss(output, target, label, crop_ratio=0.8):
+def anomaly_embedding_loss(x_normal, x_anomaly):
 
 
-#     output_cropped, target_cropped = center_crop_match(output, target)
+    x_norm_avg = x_normal.mean(dim=0)
 
-#     loss = F.mse_loss(output_cropped, target_cropped)
+    epsilon = 1e-3
 
-#     return loss
+    distances = torch.norm(x_anomaly-x_norm_avg, dim=-1)
+
+    loss = -torch.log1p(distances + epsilon).mean() #maximizing distance of anomalous vectors. consider log1p
+
+    return loss
+
+
+def recreation_loss(output, target, label, crop_ratio):
+
+    # MAKE SURE TO ONLY CONSIDER VECTORS FROM THE NORMAL DISTRIBUTION
+
+    target = target[label]
+
+    output_cropped, target_cropped = center_crop_match(output, target, crop_ratio)
+
+    loss = F.mse_loss(output_cropped, target_cropped)
+
+    return loss
+
+

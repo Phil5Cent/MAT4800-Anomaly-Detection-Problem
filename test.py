@@ -84,15 +84,20 @@ def main(config):
     with torch.no_grad():
         for _, (data, label) in enumerate(tqdm(data_loader)):
             data = data.to(device)
-            output = model(data)
+
+            fake_label = torch.ones_like(label) # pretending all samples are normal for testing / output
+            output = model(data, fake_label)
+
+            result = output[-1]
 
             target=data
 
             for i in range(data.shape[0]):
-                data_i = data[i,:]
+                result_i = result[i,:]
                 target_i = target[i,:]
                 print(f'image/result {str(i+1)}, label: {label[i]} shown')
-                show_side_by_side(data_i, target_i)
+                show_side_by_side(target_i, result_i)
+                
 
 
             #
@@ -100,18 +105,19 @@ def main(config):
             #
 
             # computing loss, metrics on test set
-            loss = loss_fn(output, target, label)
-            batch_size = data.shape[0]
-            total_loss += loss.item() * batch_size
+            # loss = loss_fn(output, target, label)
+            # batch_size = data.shape[0]
+            # total_loss += loss.item() * batch_size
             # for i, metric in enumerate(metric_fns):
             #     total_metrics[i] += metric(output, target) * batch_size
 
-    n_samples = len(data_loader.sampler)
-    log = {'loss': total_loss / n_samples}
+    # n_samples = len(data_loader.sampler)
+    # log = {'loss': total_loss / n_samples}
     # log.update({
     #     met.__name__: total_metrics[i].item() / n_samples for i, met in enumerate(metric_fns)
     # })
-    logger.info(log)
+    # logger.info(log)
+    pass
 
 
 if __name__ == '__main__':

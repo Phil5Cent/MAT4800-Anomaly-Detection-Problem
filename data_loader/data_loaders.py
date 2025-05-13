@@ -4,7 +4,8 @@ from base import BaseDataLoader
 class SelfSupervisedImageFolder(datasets.ImageFolder):
     def __getitem__(self, index):
         image, label = super().__getitem__(index)
-        return image, label  # input and target are the same
+        #0 anomaly, 1 normal
+        return image, bool(label)  # input and target are the same
     
 
 class Gum_Dataloader(BaseDataLoader):
