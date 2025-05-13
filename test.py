@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 
 # Inverse normalization
 inv_normalize = transforms.Normalize(
-    mean=[-m/s for m, s in zip((0.2788, 0.2573, 0.2250), (0.3075, 0.2872, 0.2669))],
-    std=[1/s for s in (0.3075, 0.2872, 0.2669)]
+    mean=[-m/s for m, s in zip((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))],
+    std=[1/s for s in (0.5, 0.5, 0.5)]
 )
 
 def unnormalize(tensor):
@@ -60,35 +60,37 @@ def main(config):
 
     # build model architecture
     model = config.init_obj('arch', module_arch)
-    logger.info(model)
+    # logger.info(model)
 
     # get function handles of loss and metrics
-    loss_fn = getattr(module_loss, config['loss'])
-    metric_fns = [getattr(module_metric, met) for met in config['metrics']]
+    # loss_fn = getattr(module_loss, config['loss'])
+    # metric_fns = [getattr(module_metric, met) for met in config['metrics']]
 
-    logger.info('Loading checkpoint: {} ...'.format(config.resume))
-    checkpoint = torch.load(config.resume, weights_only=False)
-    state_dict = checkpoint['state_dict']
-    if config['n_gpu'] > 1:
-        model = torch.nn.DataParallel(model)
-    model.load_state_dict(state_dict)
+    # logger.info('Loading checkpoint: {} ...'.format(config.resume))
+    # checkpoint = torch.load(config.resume, weights_only=False)
+    # state_dict = checkpoint['state_dict']
+    # if config['n_gpu'] > 1:
+    #     model = torch.nn.DataParallel(model)
+    # model.load_state_dict(state_dict)
 
-    # prepare model for testing
+    # # prepare model for testing
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = model.to(device)
-    model.eval()
+    # model = model.to(device)
+    # model.eval()
 
-    total_loss = 0.0
-    total_metrics = torch.zeros(len(metric_fns))
+    # total_loss = 0.0
+    # total_metrics = torch.zeros(len(metric_fns))
 
     with torch.no_grad():
         for _, (data, label) in enumerate(tqdm(data_loader)):
             data = data.to(device)
 
-            fake_label = torch.ones_like(label) # pretending all samples are normal for testing / output
-            output = model(data, fake_label)
+            # fake_label = torch.ones_like(label) # pretending all samples are normal for testing / output
+            # output = model(data, fake_label)
+            output = model(data)
 
-            result = output[-1]
+
+            result = output[0]
 
             target=data
 

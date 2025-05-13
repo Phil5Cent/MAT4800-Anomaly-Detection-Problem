@@ -6,29 +6,28 @@ import torch
 import torch.nn as nn
 from diffusers import AutoencoderKL
 
-# Load pretrained VAE once
-vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse")
-vae.eval()
+
 
 # === VAE Wrapper ===
 class Anomaly_VAE(nn.Module):
     def __init__(self):
         super().__init__()
-        self.encoder = vae.encoder
-        self.decoder = vae.decoder
+        # self.encoder = vae.encoder
+        # self.decoder = vae.decoder
+        # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse")#.to(device)
+        # self.vae.eval()
 
     def forward(self, x):
         # x should be normalized to [-1, 1] and resized to 512x512
 
-        # Encode
-        enc_out = self.encoder(x)
+        enc_out = self.vae.encode(x)
         latent_dist = enc_out["latent_dist"]
         latents = latent_dist.sample()
 
-        # Decode
-        recon = self.decoder(latents)["sample"]
-
-        return recon, latent_dist.mean, latent_dist.stddev
+        recon = self.vae.decode(latents)["sample"]
+        # std = torch.exp(0.5 * latent_dist.logvar)
+        return recon, latent_dist.mean, latent_dist.logvar
 
 
 # # === Basic Encoder ===
