@@ -10,7 +10,7 @@
         "type": "Gum_Dataloader",
         "args":{
             "data_dir": "chewinggum/Data/Images",
-            "batch_size": 31,
+            "batch_size": 9,
             "shuffle": true, 
             "validation_split": 0.0,
             "num_workers": 2

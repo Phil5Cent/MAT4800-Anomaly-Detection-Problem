@@ -48,15 +48,16 @@ class Trainer(BaseTrainer):
             
 
 
-            normal_data = data[label]
-            target = normal_data
+            # normal_data = data[label]
+            # target = normal_data
 
+            target=data
 
             self.optimizer.zero_grad()
             
 
 
-            output = self.model(normal_data)
+            output = self.model(data, label)
             
             
             loss = self.criterion(output, target, label)

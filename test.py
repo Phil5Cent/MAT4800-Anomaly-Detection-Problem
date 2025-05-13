@@ -87,7 +87,7 @@ def main(config):
 
             # fake_label = torch.ones_like(label) # pretending all samples are normal for testing / output
             # output = model(data, fake_label)
-            output = model(data)
+            output = model(data, label)
 
 
             result = output[0]

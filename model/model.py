@@ -16,18 +16,40 @@ class Anomaly_VAE(nn.Module):
         # self.decoder = vae.decoder
         # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse")#.to(device)
+
+        # Freeze base VAE weights
+        for param in self.vae.parameters():
+            param.requires_grad = False
+
+        self.tweak = AnomalyPusher()
         # self.vae.eval()
 
-    def forward(self, x):
+    def forward(self, x, label):
         # x should be normalized to [-1, 1] and resized to 512x512
 
         enc_out = self.vae.encode(x)
         latent_dist = enc_out["latent_dist"]
         latents = latent_dist.sample()
+        latents[~label] = 0.6*latents[~label] + 0.4*self.tweak(latents[~label]) #fucks up the abnormal vectors
+
+        # we essentially want the transformation to produce the identity for the good sample and fuck around for the bad sample. Think of it as an extra encoding step
 
         recon = self.vae.decode(latents)["sample"]
         # std = torch.exp(0.5 * latent_dist.logvar)
         return recon, latent_dist.mean, latent_dist.logvar
+
+class AnomalyPusher(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv_block = nn.Sequential(
+            nn.Conv2d(4, 8, kernel_size=3, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(8, 4, kernel_size=3, padding=1)  # Output same shape
+        )
+
+    def forward(self, z):
+        return self.conv_block(z)
+
 
 
 # # === Basic Encoder ===
