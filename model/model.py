@@ -5,39 +5,53 @@ import torch.nn.functional as F
 import torch
 import torch.nn as nn
 from diffusers import AutoencoderKL
-
+from taesd.taesd import Encoder, Decoder
 
 
 # === VAE Wrapper ===
 class Anomaly_VAE(nn.Module):
     def __init__(self):
         super().__init__()
-        # self.encoder = vae.encoder
-        # self.decoder = vae.decoder
+
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-mse").to(device)
+        self.encoder = Encoder()
+        self.decoder = Decoder()
 
-        # Freeze base VAE weights
-        for param in self.vae.parameters():
-            param.requires_grad = False
+        # Load pretrained weights
+        self.encoder.load_state_dict(torch.load("taesd/taesd_encoder.pth", map_location=device))
+        self.decoder.load_state_dict(torch.load("taesd/taesd_decoder.pth", map_location=device))
 
+        self.encoder.eval()
+        self.decoder.eval()
+
+        for p in self.encoder.parameters():
+            p.requires_grad = False
+        for p in self.decoder.parameters():
+            p.requires_grad = False
         self.tweak = AnomalyPusher().to(device)
         # self.vae.eval()
 
     def forward(self, x, label):
         # x should be normalized to [-1, 1] and resized to 512x512
 
-        enc_out = self.vae.encode(x)
-        latent_dist = enc_out["latent_dist"]
-        latents = latent_dist.sample()
+        # enc_out = self.vae.encode(x)
+        enc_out = self.encoder(x)
+
+        # latent_dist = enc_out["latent_dist"]
+        latents = enc_out
+
+        # latents = latent_dist.sample()
+        # latents = latents.det
         # latents[~label] = 0.6*latents[~label] + 0.4*self.tweak(latents[~label]) #fucks up the abnormal vectors
         latents = self.tweak(latents)
 
         # we essentially want the transformation to produce the identity for the good sample and fuck around for the bad sample. Think of it as an extra encoding step
 
-        recon = self.vae.decode(latents)["sample"]
+        # recon = self.vae.decode(latents)["sample"]
+        recon = self.decoder(latents)
+
         # std = torch.exp(0.5 * latent_dist.logvar)
-        return recon, latent_dist.mean, latent_dist.logvar
+        return recon, 0, 0
 
 class AnomalyPusher(nn.Module):
     def __init__(self):
