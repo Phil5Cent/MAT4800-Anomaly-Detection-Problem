@@ -18,8 +18,8 @@ class Anomaly_VAE(nn.Module):
         self.decoder = Decoder()
 
         # Load pretrained weights
-        self.encoder.load_state_dict(torch.load("taesd/taesd_encoder.pth", map_location=device))
-        self.decoder.load_state_dict(torch.load("taesd/taesd_decoder.pth", map_location=device))
+        self.encoder.load_state_dict(torch.load("taesd_0/taesd_encoder.pth", map_location=device))
+        self.decoder.load_state_dict(torch.load("taesd_0/taesd_decoder.pth", map_location=device))
 
         self.encoder.eval()
         self.decoder.eval()
